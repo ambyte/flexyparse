@@ -99,7 +99,7 @@ Container CI accepts only newly created **v*** tags whose commits are contained 
 
 The [GitHub Actions workflow](../.github/workflows/docker.yml) builds and tests the full solution before building standard/GPU Host containers and publishing them to GHCR. Core is included as a Host dependency; it is not a separate container service. Dockerfiles and local-build/ready-image Compose stacks live under [docker](../docker), with the repository root retained as the build context. The root [.dockerignore](../.dockerignore) excludes secrets, test outputs, local probes and model weights.
 
-Deployment tests use isolated temporary Compose fixtures to verify optional environment-file loading and absence without reading local secrets or starting containers. CI runs deployment and web UI regressions without depending on personal startup scripts. These deployment checks do not change Core configuration binding or runtime behavior.
+Deployment tests use isolated temporary Compose fixtures to verify optional environment-file loading and absence without reading local secrets or starting containers. Environment-file coverage checks resolved settings rather than version-dependent metadata in Compose output. CI runs deployment and web UI regressions without depending on personal startup scripts. These deployment checks do not change Core configuration binding or runtime behavior.
 
 Compose naming distinguishes local builds from registry deployment: [docker-compose.image.yml](../docker/docker-compose.image.yml) and [docker-compose.image.gpu.yml](../docker/docker-compose.image.gpu.yml) build images locally; [docker-compose.yml](../docker/docker-compose.yml) and [docker-compose.gpu.yml](../docker/docker-compose.gpu.yml) use ready-made GHCR images without building.
 

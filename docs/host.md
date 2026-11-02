@@ -72,7 +72,7 @@ CLI formats are json (default), markdown and html. Output defaults to a file nex
 
 For local execution with Gotenberg published on host port 3000, use **http://localhost:3000** instead of the template's container Gotenberg address. Restart Host after changing configuration.
 
-Deployment regression tests render Compose configuration in temporary directories without starting containers or reading developer settings. They verify both loading an existing root environment file and accepting its absence. Some Compose versions omit missing optional environment-file entries from rendered output, so structural assertions use an existing fixture file. Personal startup scripts are not part of the test suite or required by CI.
+Deployment regression tests render Compose configuration in temporary directories without starting containers or reading developer settings. They verify both loading an existing root environment file and accepting its absence through resolved environment values. They do not assert that rendered output retains environment-file metadata, which differs across Compose versions. Personal startup scripts are not part of the test suite or required by CI.
 
 ## Configuration
 

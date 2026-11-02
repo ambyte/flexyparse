@@ -9,8 +9,8 @@ const root = path.resolve(__dirname, "..");
 const docker = spawnSync("docker", ["compose", "version"], { encoding: "utf8" });
 const available = docker.status === 0;
 
-// Keep developer settings out of config output and preserve optional env_file
-// entries on Compose versions that omit them when the file does not exist.
+// Keep developer settings out of config output and provide a known setting
+// for the environment-file loading regression test.
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "flexyparse-compose-"));
 after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
 fs.mkdirSync(path.join(fixtureRoot, "docker"));
@@ -48,9 +48,6 @@ function assertStack(stack, gpu, published = false) {
     assert.equal(flexyparse.restart, "unless-stopped");
     assert.equal(flexyparse.depends_on.gotenberg.condition, "service_healthy");
     assert.equal(flexyparse.environment.FLEXYPARSE_GOTENBERG_URL, "http://gotenberg:3000");
-    assert.ok(flexyparse.env_file?.some(file =>
-        path.resolve(file.path) === path.join(fixtureRoot, ".env") && file.required === false),
-    "FlexyParse must load the optional root environment file");
     assert.ok(flexyparse.ports.some(port => port.target === 8080));
     assert.ok(flexyparse.volumes.some(volume => volume.source === "layout-models" && volume.target === "/app/models"));
     assert.ok(stack.volumes["layout-models"]);

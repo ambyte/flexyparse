@@ -130,7 +130,7 @@ dotnet test FlexyParse.slnx -c Release
 node --test tests/docker-compose.test.cjs tests/web-ui.test.cjs
 ```
 
-Compose regression tests require the Docker Compose CLI, but do not start containers. They use isolated temporary settings and cover both present and missing optional environment files; your local settings are not read or modified. Tests and CI do not depend on personal startup scripts. Native model/GPU and real-browser checks are optional and need their respective runtimes.
+Compose regression tests require the Docker Compose CLI, but do not start containers. They use isolated temporary settings and cover both present and missing optional environment files through resolved configuration, without requiring environment-file metadata in Compose output; your local settings are not read or modified. Tests and CI do not depend on personal startup scripts. Native model/GPU and real-browser checks are optional and need their respective runtimes.
 
 ## License
 
