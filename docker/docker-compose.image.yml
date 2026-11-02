@@ -1,0 +1,19 @@
+name: flexyparse
+
+services:
+  flexyparse:
+    extends:
+      file: docker-compose.yml
+      service: flexyparse
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: flexyparse:local
+
+  gotenberg:
+    extends:
+      file: docker-compose.yml
+      service: gotenberg
+
+volumes:
+  layout-models:

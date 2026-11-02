@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\FlexyParse.Core\FlexyParse.Core.csproj" />
+    <ProjectReference Include="..\FlexyParse.Recognition.RapidOcr\FlexyParse.Recognition.RapidOcr.csproj" />
+    <ProjectReference Include="..\FlexyParse.Recognition.Nemotron\FlexyParse.Recognition.Nemotron.csproj" />
+    <InternalsVisibleTo Include="FlexyParse.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.3.1" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

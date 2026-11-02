@@ -1,0 +1,38 @@
+name: flexyparse
+
+services:
+  flexyparse:
+    image: ${FLEXYPARSE_IMAGE:-ghcr.io/ambyte/flexyparse}:${FLEXYPARSE_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    volumes:
+      # Shared writable cache: layout detector, RapidOCR profiles and Nemotron ONNX INT8/FP16 packs.
+      # Keep the existing volume name so previously downloaded layout models are preserved.
+      - layout-models:/app/models
+    ports:
+      - "${FLEXYPARSE_PORT:-8080}:8080"
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      FLEXYPARSE_GOTENBERG_URL: ${FLEXYPARSE_GOTENBERG_URL-http://gotenberg:3000}
+    depends_on:
+      gotenberg:
+        condition: service_healthy
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    command:
+      - "gotenberg"
+      - "--api-timeout=${FLEXYPARSE_GOTENBERG_TIMEOUT_SECONDS:-180}s"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 6
+
+volumes:
+  layout-models:

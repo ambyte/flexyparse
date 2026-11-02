@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="htmx-config" content='{"selfRequestsOnly":true,"allowEval":false,"allowScriptTags":false,"includeIndicatorStyles":false}'>
+    <title>FlexyParse — document conversion</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="app.css?v=20261030-1">
+    <script src="lib/htmx/htmx.min.js" defer></script>
+    <script src="app.js?v=20261030-1" defer></script>
+</head>
+<body>
+    <main>
+        <header>
+            <a class="brand" href="./" aria-label="FlexyParse">Flexy<span>Parse</span></a>
+        </header>
+
+        <section class="intro" aria-labelledby="page-title">
+            <h1 id="page-title">Convert documents without extra steps.</h1>
+            <p class="intro-description">Upload a PDF, Images or Markdown file or paste a link to the document, select a format, and download the result. Other formats are available when Gotenberg is connected.
+                Multiple files will be returned as a single ZIP archive.</p>
+        </section>
+
+        <section class="card" aria-label="Document Conversion">
+            <form id="convert-form" action="v1/convert/file" method="post" enctype="multipart/form-data"
+                  hx-post="v1/convert/file" hx-encoding="multipart/form-data" hx-swap="none"
+                  hx-ext="docling-source"
+                  hx-disabled-elt="find button[type='submit']" hx-sync="this:drop">
+                <label class="source-label" for="source-mode">Document Source
+                    <select id="source-mode" aria-controls="file-source url-source">
+                        <option value="files">Files from device</option>
+                        <option value="url">Link (URL)</option>
+                    </select>
+                </label>
+                <div id="file-source">
+                    <label class="upload" for="files">
+                        <span class="upload-icon" aria-hidden="true">↑</span>
+                        <strong>Choose documents</strong>
+                        <span>PDF, Images, Markdown and other documents (via Gotenberg)</span>
+                        <input id="files" name="files" type="file"
+                               multiple required aria-describedby="file-summary">
+                    </label>
+                    <p id="file-summary" class="muted">Files not selected yet.</p>
+                </div>
+                <div id="url-source" hidden>
+                    <label class="source-label" for="source-url">Document URL
+                        <input id="source-url" type="url" placeholder="https://example.com/document.pdf"
+                               pattern="https?://.+" maxlength="16384" disabled
+                               aria-describedby="url-help">
+                    </label>
+                    <p id="url-help" class="muted">Direct public HTTP(S) link to the document. The file will be downloaded by the server.
+                        Links to the local network and redirects are not supported.</p>
+                </div>
+
+                <div class="options">
+                    <label for="format">Result Format
+                        <select id="format" name="to_formats">
+                            <option value="json">JSON — structured data</option>
+                            <option value="md">Markdown — text and markup</option>
+                            <option value="html">HTML — web document</option>
+                        </select>
+                    </label>
+                    <label for="recognize-images">Image Recognition
+                        <select id="recognize-images" name="do_ocr" aria-describedby="recognition-help">
+                            <option value="true">Enable</option>
+                            <option value="false">Disable</option>
+                        </select>
+                    </label>
+                </div>
+                <p id="recognition-help" class="muted">When recognizing images, they are sent to an external API.
+                    This option is not used for Markdown.</p>
+
+                <label class="source-label" for="api-key">API Key (if required)
+                    <input id="api-key" type="password" autocomplete="off" spellcheck="false"
+                           aria-describedby="api-key-help">
+                </label>
+                <p id="api-key-help" class="muted">Sent as X-Api-Key to this server only. Not saved in browser storage.</p>
+
+                <div class="actions">
+                    <button type="submit" id="convert-button">Convert</button>
+                    <button type="button" id="cancel-button" hidden>Cancel</button>
+                    <span id="busy" hidden>Processing document…</span>
+                </div>
+                <p class="elapsed">Elapsed time: <span id="elapsed-time" role="timer" aria-live="off" aria-label="Elapsed conversion time">00:00:00</span></p>
+                <progress id="upload-progress" max="100" value="0" aria-label="Downloading files" hidden></progress>
+            </form>
+
+            <div id="result" class="result" role="status" aria-live="polite" aria-atomic="true">
+                <p id="status">All set up and ready to go. Select files or paste the document URL.</p>
+                <a id="download" class="download" hidden>Download Result</a>
+            </div>
+            <noscript><p class="error">JavaScript is required for the web interface.
+                Without it, use the HTTP API or command-line interface.</p></noscript>
+        </section>
+
+        <footer>Files are processed using the existing FlexyParse API. The service is intended for a trusted network.
+            <a href="docs">Swagger / documentation API</a></footer>
+    </main>
+</body>
+</html>

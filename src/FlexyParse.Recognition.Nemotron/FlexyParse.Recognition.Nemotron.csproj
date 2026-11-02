@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FlexyParse.Core\FlexyParse.Core.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.EP.WebGpu" Version="0.5.0" />
+    <InternalsVisibleTo Include="FlexyParse.Tests" />
+    <EmbeddedResource Include="int8-pack.json" />
+    <EmbeddedResource Include="fp16-pack.json" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,14 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+*.suo
+TestResults/
+.dotnet/
+artifacts/
+models/
+*.onnx
+appsettings.*.local.json
+.env
+start.bat

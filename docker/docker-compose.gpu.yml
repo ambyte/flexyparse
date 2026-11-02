@@ -1,0 +1,28 @@
+# Standalone Linux Intel/AMD Vulkan stack, including Gotenberg.
+# docker compose --env-file .env -f docker/docker-compose.gpu.yml up -d
+name: flexyparse
+
+services:
+  flexyparse:
+    extends:
+      file: docker-compose.yml
+      service: flexyparse
+    image: ${FLEXYPARSE_IMAGE:-ghcr.io/ambyte/flexyparse}:${FLEXYPARSE_IMAGE_TAG:-latest}-gpu
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "${FLEXYPARSE_GPU_RENDER_GID:?Set FLEXYPARSE_GPU_RENDER_GID to the host GPU render-node group ID}"
+    environment:
+      FLEXYPARSE_RECOGNITION_PROVIDER: NemotronGPU
+      # Ensure a standard .NET key in .env cannot select a CPU provider in this stack.
+      FlexyParse__Recognition__Provider: NemotronGPU
+      FLEXYPARSE_NEMOTRON_GPU_DEVICE_ID: ${FLEXYPARSE_NEMOTRON_GPU_DEVICE_ID:-0}
+
+  gotenberg:
+    extends:
+      file: docker-compose.yml
+      service: gotenberg
+
+# Top-level resources are not inherited by extends. Keep the CPU stack's cache name.
+volumes:
+  layout-models:

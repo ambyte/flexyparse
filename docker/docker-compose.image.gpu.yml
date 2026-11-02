@@ -1,0 +1,20 @@
+# Standalone local build for Linux Intel/AMD Vulkan.
+name: flexyparse
+
+services:
+  flexyparse:
+    extends:
+      file: docker-compose.gpu.yml
+      service: flexyparse
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.gpu
+    image: flexyparse:gpu
+
+  gotenberg:
+    extends:
+      file: docker-compose.yml
+      service: gotenberg
+
+volumes:
+  layout-models:

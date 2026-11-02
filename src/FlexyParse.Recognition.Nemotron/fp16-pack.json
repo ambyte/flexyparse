@@ -1,0 +1,97 @@
+[
+  {
+    "Name": "LICENSE",
+    "Size": 3051,
+    "Sha256": "3375384ee1050a54d69c98c74d6499841166cd7db823ed90358f430df8c39856"
+  },
+  {
+    "Name": "chat_template.jinja",
+    "Size": 212,
+    "Sha256": "86e90f392a2779c96c96b5848248981a05750e7a11e0380b092a8c35e2c3e32f"
+  },
+  {
+    "Name": "config.json",
+    "Size": 5735,
+    "Sha256": "bff3460ae530573ad2e276627be86cab1b6859754b76e8b196410f17e7f0b7d5"
+  },
+  {
+    "Name": "decoder_model_merged.onnx",
+    "Size": 241324,
+    "Sha256": "5ff00488a05760bd353688ed6b86b8934ab41854d0abf57391e63fa3fc4e4994"
+  },
+  {
+    "Name": "decoder_model_merged.onnx_data",
+    "Size": 379445248,
+    "Sha256": "109af58fb0a8088677c2f9800de5e005e0dfbbbf1b67d9d45cb7f94ccb0fa2f5"
+  },
+  {
+    "Name": "embed_tokens.onnx",
+    "Size": 647,
+    "Sha256": "4a75f44b1ca16ea92b8df1f98ddef948753e7a7065919b56fb9339a824b71408"
+  },
+  {
+    "Name": "embed_tokens.onnx_data",
+    "Size": 148504576,
+    "Sha256": "902575f4a347fd8392dfb23b0f29bd944883b94b41616b1f3226a623d5702976"
+  },
+  {
+    "Name": "generation_config.json",
+    "Size": 284,
+    "Sha256": "0ec0669b5d3df6c4f2fcbf41334c3d64f44fdee1d1e5f158a33b112edf1646c3"
+  },
+  {
+    "Name": "ocr_manifest.json",
+    "Size": 956,
+    "Sha256": "0d5dfd1a229569c812f1e55d1efb1087a8d3814a9f9fec93de15c01655d75401"
+  },
+  {
+    "Name": "patch_embed.onnx",
+    "Size": 543,
+    "Sha256": "4551b99cf8f15e614e405f8152a7f10c95128577c7778fdda566130edde698e8"
+  },
+  {
+    "Name": "patch_embed.onnx_data",
+    "Size": 1769472,
+    "Sha256": "e6c05046e6b9a2d6b5af98d8ce9b97c7f326110bdde8bcecb37ec42ce226a42d"
+  },
+  {
+    "Name": "pos_embed.npy",
+    "Size": 75497600,
+    "Sha256": "656b840ea221b51eef1fef1daa18ed60b7ba32d8d25a663d385a0af759540712"
+  },
+  {
+    "Name": "preprocessor_config.json",
+    "Size": 950,
+    "Sha256": "16d54d73fc265b31f3771caf39770dc85213cae7594823ba7a6ac3f085315ada"
+  },
+  {
+    "Name": "processor_config.json",
+    "Size": 287,
+    "Sha256": "b3e2ff2cc94f3d9412f179acf06d8bc5543305ec27966617977b3bd47fee9e5e"
+  },
+  {
+    "Name": "special_tokens_map.json",
+    "Size": 747,
+    "Sha256": "7073bb56328d2b66724495a7cf53841fccdcc9efcafb1e1b7cc916baa80e3c8c"
+  },
+  {
+    "Name": "tokenizer.json",
+    "Size": 7627412,
+    "Sha256": "34f566e728995769d971fc2707596bfb92c83298d357bc6ec29a7a1d3d12a74a"
+  },
+  {
+    "Name": "tokenizer_config.json",
+    "Size": 414355,
+    "Sha256": "701dad9bcc5f964a6fa020e7d5018c71efc93aad79d471cfca541b9bb4f6d012"
+  },
+  {
+    "Name": "vision_encoder.onnx",
+    "Size": 290323,
+    "Sha256": "ace49d8fdae251bbbae3c69d0fda2deea5b8d89cc4c29dcd5921636257cea0f0"
+  },
+  {
+    "Name": "vision_encoder.onnx_data",
+    "Size": 838439136,
+    "Sha256": "56acc9a965eb9e97e391da1435d2ba233f167fddb166a3361cca80cade43a24f"
+  }
+]

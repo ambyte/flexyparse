@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FlexyParse.Core/FlexyParse.Core.csproj" />
+    <Project Path="src/FlexyParse.Host/FlexyParse.Host.csproj" />
+    <Project Path="src/FlexyParse.Recognition.RapidOcr/FlexyParse.Recognition.RapidOcr.csproj" />
+    <Project Path="src/FlexyParse.Recognition.Nemotron/FlexyParse.Recognition.Nemotron.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FlexyParse.Tests/FlexyParse.Tests.csproj" />
+  </Folder>
+</Solution>
