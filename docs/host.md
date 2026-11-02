@@ -70,13 +70,15 @@ dotnet run --project src/FlexyParse.Host -- help
 
 CLI formats are json (default), markdown and html. Output defaults to a file next to the source; use **--output -** for one result on stdout. Logs go to stderr. **--ocr-language eslav** overrides the RapidOCR profile for a conversion.
 
-The Windows [launcher](../start.bat) loads the local environment file and starts Gotenberg with Docker before running Host locally (default port 8088). For local execution, change the template's container Gotenberg address to **http://localhost:3000**. Restart Host after changing configuration.
+For local execution with Gotenberg published on host port 3000, use **http://localhost:3000** instead of the template's container Gotenberg address. Restart Host after changing configuration.
+
+Deployment regression tests render Compose configuration in temporary directories without starting containers or reading developer settings. They verify both loading an existing root environment file and accepting its absence. Some Compose versions omit missing optional environment-file entries from rendered output, so structural assertions use an existing fixture file. Personal startup scripts are not part of the test suite or required by CI.
 
 ## Configuration
 
 Start with **MAIN SETTINGS** in the [environment template](../.env.example): port, incoming API key, recognition provider, model API and Gotenberg address. Separate sections cover local recognition, layout analysis, advanced API settings, processing limits, background jobs and debugging. Full defaults are in [Host settings](../src/FlexyParse.Host/appsettings.json).
 
-Compose and the Windows launcher load the local environment file. Direct .NET execution does not: set process environment variables or standard .NET configuration instead. Host priority, highest first:
+Compose loads the local environment file. Direct .NET execution does not: set process environment variables or standard .NET configuration instead. Host priority, highest first:
 
 1. Web startup configuration arguments.
 2. Standard .NET environment keys, for example FlexyParse__Recognition__Provider.

@@ -1,19 +1,32 @@
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
+const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
-const { test } = require("node:test");
+const { after, test } = require("node:test");
 
 const root = path.resolve(__dirname, "..");
 const docker = spawnSync("docker", ["compose", "version"], { encoding: "utf8" });
 const available = docker.status === 0;
 
-function config(files, variables = {}) {
+// Keep developer settings out of config output and preserve optional env_file
+// entries on Compose versions that omit them when the file does not exist.
+const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "flexyparse-compose-"));
+after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
+fs.mkdirSync(path.join(fixtureRoot, "docker"));
+for (const file of ["docker-compose.yml", "docker-compose.gpu.yml", "docker-compose.image.yml", "docker-compose.image.gpu.yml"]) {
+    fs.copyFileSync(path.join(root, "docker", file), path.join(fixtureRoot, "docker", file));
+}
+fs.copyFileSync(path.join(root, ".env.example"), path.join(fixtureRoot, ".env.example"));
+fs.writeFileSync(path.join(fixtureRoot, ".env"), "FLEXYPARSE_COMPOSE_TEST_SETTING=fixture\n");
+
+function config(files, variables = {}, { directory = fixtureRoot, resolveEnvironment = false } = {}) {
     const result = spawnSync("docker", [
         "compose", "--env-file", ".env.example",
         ...files.flatMap(file => ["-f", file]),
-        "config", "--no-env-resolution", "--format", "json"
+        "config", ...(resolveEnvironment ? [] : ["--no-env-resolution"]), "--format", "json"
     ], {
-        cwd: root,
+        cwd: directory,
         encoding: "utf8",
         env: { ...process.env, FLEXYPARSE_GPU_RENDER_GID: "109", ...variables }
     });
@@ -29,14 +42,15 @@ function assertStack(stack, gpu, published = false) {
         assert.equal(flexyparse.build, undefined);
         assert.equal(flexyparse.image, `ghcr.io/ambyte/flexyparse:latest${gpu ? "-gpu" : ""}`);
     } else {
-        assert.equal(flexyparse.build.context.replaceAll("\\", "/"), root.replaceAll("\\", "/"));
+        assert.equal(flexyparse.build.context.replaceAll("\\", "/"), fixtureRoot.replaceAll("\\", "/"));
         assert.equal(flexyparse.build.dockerfile, gpu ? "docker/Dockerfile.gpu" : "docker/Dockerfile");
     }
     assert.equal(flexyparse.restart, "unless-stopped");
     assert.equal(flexyparse.depends_on.gotenberg.condition, "service_healthy");
     assert.equal(flexyparse.environment.FLEXYPARSE_GOTENBERG_URL, "http://gotenberg:3000");
-    assert.ok(flexyparse.env_file.some(file =>
-        path.resolve(file.path) === path.join(root, ".env") && file.required === false));
+    assert.ok(flexyparse.env_file?.some(file =>
+        path.resolve(file.path) === path.join(fixtureRoot, ".env") && file.required === false),
+    "FlexyParse must load the optional root environment file");
     assert.ok(flexyparse.ports.some(port => port.target === 8080));
     assert.ok(flexyparse.volumes.some(volume => volume.source === "layout-models" && volume.target === "/app/models"));
     assert.ok(stack.volumes["layout-models"]);
@@ -71,7 +85,7 @@ test("GPU Compose rejects a missing render group before starting containers", { 
     const result = spawnSync("docker", [
         "compose", "--env-file", ".env.example", "-f", "docker/docker-compose.image.gpu.yml", "config", "--quiet"
     ], {
-        cwd: root,
+        cwd: fixtureRoot,
         encoding: "utf8",
         env: { ...process.env, FLEXYPARSE_GPU_RENDER_GID: "" }
     });
@@ -104,3 +118,25 @@ for (const gpu of [false, true]) {
         assert.equal(stack.services.flexyparse.build, undefined);
     });
 }
+
+test("all stacks load service settings from the root environment file", { skip: !available }, () => {
+    for (const file of ["docker-compose.yml", "docker-compose.gpu.yml", "docker-compose.image.yml", "docker-compose.image.gpu.yml"]) {
+        const stack = config([`docker/${file}`], {}, { resolveEnvironment: true });
+        assert.equal(stack.services.flexyparse.environment.FLEXYPARSE_COMPOSE_TEST_SETTING, "fixture");
+    }
+});
+
+test("all stacks allow a missing optional root environment file", { skip: !available }, () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "flexyparse-compose-no-env-"));
+    try {
+        fs.cpSync(path.join(fixtureRoot, "docker"), path.join(directory, "docker"), { recursive: true });
+        fs.copyFileSync(path.join(fixtureRoot, ".env.example"), path.join(directory, ".env.example"));
+        for (const file of ["docker-compose.yml", "docker-compose.gpu.yml", "docker-compose.image.yml", "docker-compose.image.gpu.yml"]) {
+            const stack = config([`docker/${file}`], {}, { directory, resolveEnvironment: true });
+            assert.equal(stack.services.flexyparse.environment.FLEXYPARSE_GOTENBERG_URL, "http://gotenberg:3000");
+            assert.equal(stack.services.flexyparse.environment.FLEXYPARSE_COMPOSE_TEST_SETTING, undefined);
+        }
+    } finally {
+        fs.rmSync(directory, { recursive: true, force: true });
+    }
+});

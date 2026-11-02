@@ -57,7 +57,7 @@ jobs:
       - name: Test .NET
         run: dotnet test FlexyParse.slnx -c Release --no-build --logger trx --results-directory TestResults
       - name: Test deployment and web UI
-        run: node --test tests/docker-compose.test.cjs tests/windows-launcher.test.cjs tests/web-ui.test.cjs
+        run: node --test tests/docker-compose.test.cjs tests/web-ui.test.cjs
 
   images:
     name: Image (${{ matrix.variant }})

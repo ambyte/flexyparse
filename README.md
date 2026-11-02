@@ -95,7 +95,7 @@ dotnet run --project src/FlexyParse.Host --no-launch-profile -- serve --urls htt
 dotnet run --project src/FlexyParse.Host -- convert report.pdf --format markdown --output report.md --recognize-images false
 ```
 
-For Office/HTML support outside Docker, configure an accessible Gotenberg URL. The Windows [launcher](start.bat) loads the local environment file, starts Gotenberg in Docker and runs Host locally. See [Host usage](docs/host.md).
+For Office/HTML support outside Docker, configure an accessible Gotenberg URL. See [Host usage](docs/host.md).
 
 ## HTTP API example
 
@@ -127,10 +127,10 @@ One document returns a JSON wrapper containing the requested content; multiple d
 ```sh
 dotnet build FlexyParse.slnx -c Release
 dotnet test FlexyParse.slnx -c Release
-node --test tests/docker-compose.test.cjs tests/windows-launcher.test.cjs tests/web-ui.test.cjs
+node --test tests/docker-compose.test.cjs tests/web-ui.test.cjs
 ```
 
-Compose regression tests require the Docker Compose CLI. Native model/GPU and real-browser checks are optional and need their respective runtimes.
+Compose regression tests require the Docker Compose CLI, but do not start containers. They use isolated temporary settings and cover both present and missing optional environment files; your local settings are not read or modified. Tests and CI do not depend on personal startup scripts. Native model/GPU and real-browser checks are optional and need their respective runtimes.
 
 ## License
 
