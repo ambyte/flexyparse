@@ -117,7 +117,12 @@ public sealed class TabulaTableExtractor
     private static List<TablePiece> ExtractLattice(PageArea page, CancellationToken cancellationToken)
     {
         var algorithm = new SpreadsheetExtractionAlgorithm();
-        return ToPieces(algorithm.Extract(page), cancellationToken, requireGridQuality: true);
+        var candidates = algorithm.Extract(page);
+        var recovered = RotatedTableRecovery.Extract(page, candidates, cancellationToken);
+        var ordinary = candidates.Where(candidate => !recovered.Any(table => IsInsideRegion(
+            new Box(candidate.Left, candidate.Bottom, candidate.Right, candidate.Top), table.Box))).ToArray();
+        recovered.AddRange(ToPieces(ordinary, cancellationToken, requireGridQuality: true));
+        return recovered;
     }
 
     internal static bool IsInsideRegion(Box candidate, Box region) => candidate.Area > 0
