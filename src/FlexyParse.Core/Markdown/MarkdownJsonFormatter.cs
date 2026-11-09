@@ -45,6 +45,11 @@ public sealed class MarkdownJsonFormatter
                 case "error":
                     destination.AddQuote(block.GetProperty("message").GetString()!);
                     break;
+                case "image":
+                    destination.AddParagraph(MarkdownText.Raw(block.TryGetProperty("src", out var source)
+                        ? "![Image](" + source.GetString() + ")"
+                        : "<!-- image -->"));
+                    break;
                 default:
                     throw new InvalidDataException($"Unsupported Markdown block type: {block.GetProperty("type").GetString()}.");
             }

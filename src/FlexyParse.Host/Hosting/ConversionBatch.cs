@@ -46,6 +46,8 @@ internal sealed class ConversionBatch : IDisposable
             var formats = new List<string>();
             bool? doOcr = null;
             string? ocrLanguage = null;
+            string? imageExportMode = null;
+            bool? includeImages = null;
             var reader = new MultipartReader(boundary, request.Body);
             MultipartSection? section;
             while ((section = await reader.ReadNextSectionAsync(token).ConfigureAwait(false)) is not null)
@@ -56,6 +58,14 @@ internal sealed class ConversionBatch : IDisposable
                 }
 
                 var field = HeaderUtilities.RemoveQuotes(disposition.Name).ToString();
+                if (field is not ("files" or "to_formats" or "do_ocr" or "ocr_language" or "image_export_mode" or "include_images"))
+                {
+                    // Drain ignored sections without buffering their values; normal resource limits still apply.
+                    await LimitedStreamCopy.CopyAsync(section.Body, Stream.Null,
+                        disposition.IsFileDisposition() ? settings.MaxUploadBytes : 16 * 1024, token).ConfigureAwait(false);
+                    IgnoredConversionParameters.Log(request, field);
+                    continue;
+                }
                 if (disposition.IsFileDisposition())
                 {
                     if (field != "files")
@@ -92,8 +102,14 @@ internal sealed class ConversionBatch : IDisposable
                         case "ocr_language" when ocrLanguage is null:
                             ocrLanguage = value;
                             break;
+                        case "image_export_mode" when imageExportMode is null:
+                            imageExportMode = value;
+                            break;
+                        case "include_images" when includeImages is null && bool.TryParse(value, out var include):
+                            includeImages = include;
+                            break;
                         default:
-                            throw Invalid($"Unsupported or invalid field: {field}.");
+                            throw Invalid($"Invalid or duplicate field: {field}.");
                     }
                 }
             }
@@ -106,7 +122,9 @@ internal sealed class ConversionBatch : IDisposable
             batch.Options = new ConversionOptions
             {
                 ToFormats = formats.Count == 0 ? ["md"] : formats.ToArray(),
-                DoOcr = doOcr ?? true
+                DoOcr = doOcr ?? true,
+                ImageExportMode = imageExportMode ?? "placeholder",
+                IncludeImages = includeImages ?? true
             };
             if (ocrLanguage is not null)
             {
@@ -160,14 +178,27 @@ internal sealed class ConversionOptions
 
     public string[] ToFormats { get; init; } = ["md"];
     public bool DoOcr { get; init; } = true;
+    public string ImageExportMode { get; init; } = "placeholder";
+    public bool IncludeImages { get; init; } = true;
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? UnsupportedParameters { get; init; }
+
+    // Methods keep derived values out of the JSON contract, including its ignored-property map.
+    public ImageExportMode GetExportMode() => ImageExportMode switch
+    {
+        "placeholder" => Pipeline.ImageExportMode.Placeholder,
+        "embedded" => Pipeline.ImageExportMode.Embedded,
+        "referenced" => Pipeline.ImageExportMode.Referenced,
+        _ => throw ConversionBatch.Invalid("image_export_mode only accepts placeholder, embedded, and referenced.")
+    };
     public string? OcrLanguage
     {
         get => _ocrLanguage;
         set => _ocrLanguage = value ?? throw ConversionBatch.Invalid("ocr_language must be a non-empty supported language string.");
     }
 
-    [JsonIgnore]
-    public IReadOnlyList<OutputFormat> Formats => ToFormats.Select(value => value switch
+    public IReadOnlyList<OutputFormat> GetFormats() => ToFormats.Select(value => value switch
     {
         "md" => OutputFormat.Markdown,
         "json" => OutputFormat.Json,
@@ -182,7 +213,8 @@ internal sealed class ConversionOptions
             throw ConversionBatch.Invalid("Specify from one to three to_formats.");
         }
 
-        _ = Formats;
+        _ = GetFormats();
+        _ = GetExportMode();
         if (OcrLanguage is not null)
         {
             try

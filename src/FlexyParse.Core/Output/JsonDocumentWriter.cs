@@ -182,6 +182,18 @@ public sealed class JsonDocumentWriter
         var hash = block.TryGetProperty("contentHash", out var hashElement) && hashElement.ValueKind == JsonValueKind.String
             ? hashElement.GetString()
             : null;
+        if (hash is not null && workspace.ImageExportMode is not null
+            && workspace.ExportedImageSources.TryGetValue(hash, out var imageSource))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("type", "image");
+            writer.WriteString("alt", "Image");
+            if (imageSource is not null)
+            {
+                writer.WriteString("src", imageSource);
+            }
+            writer.WriteEndObject();
+        }
         JsonDocument? recognition = null;
         string? parseError = null;
         if (!string.IsNullOrWhiteSpace(hash))

@@ -257,6 +257,7 @@ public sealed class ImageInputTests
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["FlexyParse:GotenbergUrl"] = gotenbergEnabled ? "http://gotenberg:3000" : "",
+            ["FlexyParse:ImageRecognitionFilter:Enabled"] = "false",
             ["FlexyParse:ModelApi:RequireApiKey"] = "false"
         }).Build();
         var services = new ServiceCollection();

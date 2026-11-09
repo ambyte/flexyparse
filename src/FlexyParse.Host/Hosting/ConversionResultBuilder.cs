@@ -16,7 +16,9 @@ internal static class ConversionResultBuilder
     public static async Task<ConversionResult> BuildAsync(ConversionBatch batch, IDocumentConverter converter,
         FlexyParseOptions settings, Stopwatch stopwatch, CancellationToken token)
     {
-        var formats = batch.Options.Formats;
+        var formats = batch.Options.GetFormats();
+        var referencedImages = batch.Options.IncludeImages && batch.Options.GetExportMode() == ImageExportMode.Referenced;
+        var imagesDirectory = referencedImages ? Path.Combine(batch.Directory, "images") : null;
         var results = new List<ConvertedFile>();
         await Parallel.ForEachAsync(batch.Files, new ParallelOptions
         {
@@ -35,7 +37,10 @@ internal static class ConversionResultBuilder
                     FileName = file.FileName,
                     Format = format,
                     RecognizeImages = batch.Options.DoOcr,
-                    OcrLanguage = batch.Options.OcrLanguage
+                    OcrLanguage = batch.Options.OcrLanguage,
+                    ImageExportMode = batch.Options.GetExportMode(),
+                    IncludeImages = batch.Options.IncludeImages,
+                    ImageOutputDirectory = imagesDirectory
                 }, destination, ct).ConfigureAwait(false);
                 lock (results)
                 {
@@ -45,7 +50,7 @@ internal static class ConversionResultBuilder
         }).ConfigureAwait(false);
 
         var resultPath = Path.Combine(batch.Directory, "result");
-        if (batch.Files.Count == 1)
+        if (batch.Files.Count == 1 && !referencedImages)
         {
             var document = new Dictionary<string, object?>();
             foreach (var result in results)
@@ -94,10 +99,21 @@ internal static class ConversionResultBuilder
                 await using var input = File.OpenRead(result.Path);
                 await input.CopyToAsync(entryStream, token).ConfigureAwait(false);
             }
+            if (imagesDirectory is not null && Directory.Exists(imagesDirectory))
+            {
+                foreach (var image in Directory.EnumerateFiles(imagesDirectory).Order(StringComparer.Ordinal))
+                {
+                    token.ThrowIfCancellationRequested();
+                    var entry = archive.CreateEntry("images/" + Path.GetFileName(image), CompressionLevel.Fastest);
+                    await using var entryStream = entry.Open();
+                    await using var input = File.OpenRead(image);
+                    await input.CopyToAsync(entryStream, token).ConfigureAwait(false);
+                }
+            }
         }
 
         token.ThrowIfCancellationRequested();
-        return batch.Files.Count == 1
+        return batch.Files.Count == 1 && !referencedImages
             ? new ConversionResult(resultPath, "application/json; charset=utf-8", null)
             : new ConversionResult(resultPath, "application/zip", "flexyparse.zip");
     }

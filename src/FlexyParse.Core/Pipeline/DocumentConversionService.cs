@@ -128,9 +128,16 @@ public sealed class DocumentConversionService : IDocumentConverter
             }
 
             index ??= await _extractor.ExtractAsync(workspace, cancellationToken).ConfigureAwait(false);
+            await PrepareImageExportAsync(input, workspace, index, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
             var recognize = input.RecognizeImages ?? _options.RecognizeImages;
-            if (recognize && index.Images.Count > 0)
+            var recognitionIndex = recognize ? ImageRecognitionFilter.Filter(index, _options.ImageRecognitionFilter) : index;
+            if (recognitionIndex.Images.Count < index.Images.Count)
+            {
+                _logger.LogInformation("Skipped {SkippedImages} small images before recognition in job {JobId}; originals remain available for export.",
+                    index.Images.Count - recognitionIndex.Images.Count, workspace.JobId);
+            }
+            if (recognize && recognitionIndex.Images.Count > 0)
             {
                 if (_options.Recognition.Provider == RecognitionProvider.OpenAi
                     && _options.ModelApi.RequireApiKey && string.IsNullOrWhiteSpace(_options.ModelApi.ApiKey))
@@ -140,7 +147,7 @@ public sealed class DocumentConversionService : IDocumentConverter
                         "Image recognition is enabled, but no model API key is specified. Please set FLEXYPARSE_MODEL_API_KEY, MODEL_API_KEY or FlexyParse:ModelApi:ApiKey.");
                 }
 
-                await _recognizer.RecognizeAsync(workspace, index, cancellationToken).ConfigureAwait(false);
+                await _recognizer.RecognizeAsync(workspace, recognitionIndex, cancellationToken).ConfigureAwait(false);
             }
 
             if (input.Format == OutputFormat.Markdown)
@@ -180,5 +187,62 @@ public sealed class DocumentConversionService : IDocumentConverter
                 _logger.LogInformation("Preserved conversion workspace at {Directory}", workspace.Root);
             }
         }
+    }
+
+    private static async Task PrepareImageExportAsync(ConversionInput input, JobWorkspace workspace,
+        Model.DocumentIndex index, CancellationToken token)
+    {
+        if (!input.IncludeImages || input.ImageExportMode is null)
+        {
+            return;
+        }
+
+        if (!Enum.IsDefined(input.ImageExportMode.Value))
+        {
+            throw new DocumentConversionException(ConversionStatus.BadRequest, "Invalid image export mode.");
+        }
+
+        if (input.ImageExportMode == ImageExportMode.Referenced && string.IsNullOrWhiteSpace(input.ImageOutputDirectory))
+        {
+            throw new DocumentConversionException(ConversionStatus.BadRequest, "Referenced image export requires an image output directory.");
+        }
+
+        workspace.ImageExportMode = input.ImageExportMode;
+        var sources = new Dictionary<string, string?>();
+        foreach (var image in index.Images)
+        {
+            token.ThrowIfCancellationRequested();
+            string? source = null;
+            if (input.ImageExportMode == ImageExportMode.Embedded)
+            {
+                var bytes = await File.ReadAllBytesAsync(Path.Combine(workspace.Root, image.RelativePath), token).ConfigureAwait(false);
+                source = $"data:{image.MediaType};base64,{Convert.ToBase64String(bytes)}";
+            }
+            else if (input.ImageExportMode == ImageExportMode.Referenced)
+            {
+                var directory = input.ImageOutputDirectory!;
+                Directory.CreateDirectory(directory);
+                var name = Path.GetFileName(image.RelativePath);
+                var target = Path.Combine(directory, name);
+                // Separate conversions may export the same content hash concurrently.
+                var temporary = target + "." + Guid.NewGuid().ToString("N");
+                try
+                {
+                    await using (var original = File.OpenRead(Path.Combine(workspace.Root, image.RelativePath)))
+                    await using (var output = File.Create(temporary))
+                    {
+                        await original.CopyToAsync(output, token).ConfigureAwait(false);
+                    }
+                    File.Move(temporary, target, overwrite: true);
+                }
+                finally
+                {
+                    File.Delete(temporary);
+                }
+                source = Uri.EscapeDataString(Path.GetFileName(Path.TrimEndingDirectorySeparator(directory))) + "/" + Uri.EscapeDataString(name);
+            }
+            sources[image.Hash] = source;
+        }
+        workspace.ExportedImageSources = sources;
     }
 }

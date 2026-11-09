@@ -26,6 +26,10 @@ public sealed class JobWorkspace : IAsyncDisposable
 
     public string? OcrLanguage { get; set; }
 
+    public Pipeline.ImageExportMode? ImageExportMode { get; set; }
+
+    public IReadOnlyDictionary<string, string?> ExportedImageSources { get; set; } = new Dictionary<string, string?>();
+
     public string SourceFileName { get; }
 
     public string SourcePath { get; }

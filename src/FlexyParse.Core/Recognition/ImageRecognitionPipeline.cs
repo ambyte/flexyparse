@@ -36,6 +36,13 @@ public sealed class ImageRecognitionPipeline(
         foreach (var region in plan.Regions)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var bounds = plan.CropBounds(region);
+            if (!ImageRecognitionFilter.IsEligible(bounds.Width, bounds.Height, _options.ImageRecognitionFilter))
+            {
+                logger?.LogInformation("Skipped small layout region {RegionLabel} ({Width}x{Height}) of image {ImageHash} in job {JobId}.",
+                    region.Label, bounds.Width, bounds.Height, image.Hash, workspace.JobId);
+                continue;
+            }
             var crop = plan.Crop(region);
             if (crop.Length > _options.ModelApi.MaxImageBytes)
             {

@@ -35,6 +35,8 @@ public sealed class FlexyParseOptions
 
     public ImageInputOptions ImageInput { get; set; } = new();
 
+    public ImageRecognitionFilterOptions ImageRecognitionFilter { get; set; } = new();
+
     /// <summary>
     /// Uses an application-specific subdirectory of the system temporary directory.
     /// </summary>

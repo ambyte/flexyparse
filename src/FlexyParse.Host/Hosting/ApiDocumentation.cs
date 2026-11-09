@@ -20,6 +20,7 @@ public static class ApiDocumentation
                 Version = "v1",
                 Description = "Supported synchronous and asynchronous subset of Docling REST API. "
                     + "The JSON document uses the FlexyParse model, not DoclingDocument. "
+                    + "Only parameters implemented by FlexyParse are applied; unsupported parameters are ignored and their names are logged without values. "
                     + "When a host API key is configured, /v1 routes require X-Api-Key. Health, web UI and documentation are public."
             });
             options.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
@@ -68,7 +69,7 @@ internal sealed class ConversionOperationFilter(IOptions<FlexyParseOptions> sett
                     {
                         ["multipart/form-data"] = new()
                         {
-                            Schema = Object(new()
+                            Schema = RequestObject(new()
                             {
                                 ["files"] = new OpenApiSchema
                                 {
@@ -80,7 +81,9 @@ internal sealed class ConversionOperationFilter(IOptions<FlexyParseOptions> sett
                                 },
                                 ["to_formats"] = Formats(),
                                 ["do_ocr"] = Ocr(),
-                                ["ocr_language"] = OcrLanguage()
+                                ["ocr_language"] = OcrLanguage(),
+                                ["image_export_mode"] = ImageMode(),
+                                ["include_images"] = IncludeImages()
                             }, "files"),
                             Encoding = new Dictionary<string, OpenApiEncoding>
                             {
@@ -99,19 +102,19 @@ internal sealed class ConversionOperationFilter(IOptions<FlexyParseOptions> sett
                 {
                     Required = true,
                     Description = "Provide at least one source. The combined source count must not exceed "
-                        + settings.Value.MaxFilesPerRequest + ". Null values and unknown properties are rejected. "
+                        + settings.Value.MaxFilesPerRequest + ". Invalid supported fields are rejected; unknown properties are ignored and their names are logged. "
                         + "URLs must be public HTTP(S) addresses without credentials or fragments. Redirects are not followed.",
                     Content = new Dictionary<string, OpenApiMediaType>
                     {
                         ["application/json"] = new()
                         {
-                            Schema = Object(new()
+                            Schema = RequestObject(new()
                             {
                                 ["http_sources"] = new OpenApiSchema
                                 {
                                     Type = JsonSchemaType.Array,
                                     MaxItems = settings.Value.MaxFilesPerRequest,
-                                    Items = Object(new()
+                                    Items = RequestObject(new()
                                     {
                                         ["url"] = new OpenApiSchema { Type = JsonSchemaType.String, Format = "uri" }
                                     }, "url")
@@ -120,7 +123,7 @@ internal sealed class ConversionOperationFilter(IOptions<FlexyParseOptions> sett
                                 {
                                     Type = JsonSchemaType.Array,
                                     MaxItems = settings.Value.MaxFilesPerRequest,
-                                    Items = Object(new()
+                                    Items = RequestObject(new()
                                     {
                                         ["filename"] = new OpenApiSchema { Type = JsonSchemaType.String, MinLength = 1 },
                                         ["base64_string"] = new OpenApiSchema
@@ -132,7 +135,11 @@ internal sealed class ConversionOperationFilter(IOptions<FlexyParseOptions> sett
                                         }
                                     }, "filename", "base64_string")
                                 },
-                                ["options"] = Object(new() { ["to_formats"] = Formats(), ["do_ocr"] = Ocr(), ["ocr_language"] = OcrLanguage() })
+                                ["options"] = RequestObject(new()
+                                {
+                                    ["to_formats"] = Formats(), ["do_ocr"] = Ocr(), ["ocr_language"] = OcrLanguage(),
+                                    ["image_export_mode"] = ImageMode(), ["include_images"] = IncludeImages()
+                                })
                             }),
                             Example = JsonNode.Parse("""
                                 {
@@ -243,7 +250,8 @@ internal sealed class ConversionOperationFilter(IOptions<FlexyParseOptions> sett
     private static void ConversionResponses(OpenApiOperation operation, OperationFilterContext context)
     {
         operation.Description = "One document returns a JSON envelope; multiple documents return a ZIP of ordinary output files. "
-            + "JSON content uses the FlexyParse model, not DoclingDocument. Unknown options are rejected. "
+            + "Referenced image export returns a ZIP even for one document, with image assets included. "
+            + "JSON content uses the FlexyParse model, not DoclingDocument. Unsupported parameters are ignored with warning logs containing names only. "
             + "Each requested format runs the existing converter separately. Disconnecting cancels processing.";
         operation.Responses = new OpenApiResponses
         {
@@ -276,7 +284,7 @@ internal sealed class ConversionOperationFilter(IOptions<FlexyParseOptions> sett
                     ["application/zip"] = new() { Schema = Binary() }
                 }
             },
-            ["400"] = Problem("Invalid request, unsupported option, invalid Base64, inaccessible/forbidden URL or invalid document.", context),
+            ["400"] = Problem("Invalid request or supported option value, invalid Base64, inaccessible/forbidden URL or invalid document.", context),
             ["413"] = Problem("Document or bounded request body/field exceeds the configured limit.", context),
             ["499"] = Problem("Processing was cancelled, if the connection still permits a response.", context),
             ["503"] = Problem("Required model key is missing or Gotenberg is unavailable.", context),
@@ -307,7 +315,28 @@ internal sealed class ConversionOperationFilter(IOptions<FlexyParseOptions> sett
         AdditionalPropertiesAllowed = false
     };
 
+    private static OpenApiSchema RequestObject(Dictionary<string, IOpenApiSchema> properties, params string[] required)
+    {
+        var schema = Object(properties, required);
+        schema.AdditionalPropertiesAllowed = true;
+        schema.Description = "Unsupported parameters are ignored and logged by name only. Supported parameters retain normal validation; request size limits still apply.";
+        return schema;
+    }
+
     private static OpenApiSchema Binary() => new() { Type = JsonSchemaType.String, Format = "binary" };
+    private static OpenApiSchema ImageMode() => new()
+    {
+        Type = JsonSchemaType.String,
+        Enum = [JsonValue.Create("placeholder")!, JsonValue.Create("embedded")!, JsonValue.Create("referenced")!],
+        Default = JsonValue.Create("placeholder"),
+        Description = "Export picture placeholders, embedded data URLs, or referenced image assets. Referenced mode returns a ZIP containing document files and images/. Independent of do_ocr; tiny images remain exportable."
+    };
+    private static OpenApiSchema IncludeImages() => new()
+    {
+        Type = JsonSchemaType.Boolean,
+        Default = JsonValue.Create(true),
+        Description = "Include images in exported output. False suppresses image exports, not recognition."
+    };
     private static OpenApiSchema OcrLanguage() => new()
     {
         Type = JsonSchemaType.String,

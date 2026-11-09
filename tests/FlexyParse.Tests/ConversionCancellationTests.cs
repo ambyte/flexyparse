@@ -163,8 +163,11 @@ public class ConversionCancellationTests
         page.AddText("Cancellation test", 12, new PdfPoint(72, 760), font);
         if (withImage)
         {
-            var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAAAE0lEQVR4nGP4z8CAB+GT+z9ypQG3ymOdJh6tQAAAAABJRU5ErkJggg==");
-            page.AddPng(png, new PdfRectangle(72, 500, 172, 600));
+            // Recognition/cancellation fixtures must pass the default tiny-image filter.
+            using var bitmap = new SkiaSharp.SKBitmap(128, 64);
+            bitmap.Erase(SkiaSharp.SKColors.White);
+            using var png = bitmap.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+            page.AddPng(png.ToArray(), new PdfRectangle(72, 500, 200, 564));
         }
 
         return builder.Build();

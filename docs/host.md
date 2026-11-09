@@ -104,6 +104,27 @@ Explicit empty values clear lower-priority values. The GPU Compose stack explici
 
 Use standard nested .NET keys for settings without a short alias. For example, FlexyParse__ImageInput__MaxPixels controls the decoded-image pixel limit.
 
+### Supported conversion parameters
+
+The HTTP API supports **to_formats**, **do_ocr**, **ocr_language**, **image_export_mode** and **include_images**. These options are executed by FlexyParse for uploaded files, URL/Base64 sources and background tasks. See the [API guide](api.md) for defaults and examples, **/v1/capabilities** for the supported option list and **/openapi.json** for validation schemas.
+
+The application does not provide every Docling-specific OCR engine, model preset or enrichment stage. Unsupported fields are ignored and logged at Warning level under **FlexyParse.Hosting.ConversionParameters**, with their names in the structured **ParameterName** field. Values are not logged; control characters in names are escaped and names are bounded. JSON locations identify nested unsupported fields. Supported values still undergo normal validation, and size limits remain enforced. Synchronous and background requests use the same policy; background admission logs each unsupported field without repeating the warning in the worker. Requests are not forwarded to an external Docling service. Existing recognition-provider and Gotenberg settings continue to configure the application's own conversion pipeline.
+
+### Small-image filter
+
+Native recognition skips low-resolution icons/decorations before any provider or API-key requirement. These standard environment keys configure the inclusive thresholds:
+
+| Key | Default |
+| --- | --- |
+| FlexyParse__ImageRecognitionFilter__Enabled | true |
+| FlexyParse__ImageRecognitionFilter__MinShortSide | 24 |
+| FlexyParse__ImageRecognitionFilter__MinLongSide | 80 |
+| FlexyParse__ImageRecognitionFilter__MinPixels | 4096 |
+
+All three size requirements must pass, regardless of rotation. A 32×32 icon, 64×64 thumbnail or 1000×8 separator is skipped; a 128×64 image, 400×24 text strip or full scanned page passes. This is not content classification: a large logo can still pass and a tiny useful label can be skipped. Adjust thresholds for your corpus; disable the filter when fidelity on tiny text matters more than recognition cost. Thresholds must be positive and MinLongSide must not be below MinShortSide.
+
+The filter covers extracted PDF images, uploaded raster documents and padded layout crops, for every recognition provider. Skips are not failures. Originals remain available for image export. The same filtering applies to synchronous and background conversions.
+
 ### Recognition
 
 Select the provider with FLEXYPARSE_RECOGNITION_PROVIDER:

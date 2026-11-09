@@ -37,6 +37,8 @@ public static class FlexyParseServiceCollectionExtensions
                 "GotenbergUrl must be an HTTP(S) base URL without credentials, query or fragment.")
             .Validate(options => options.GotenbergTimeoutSeconds > 0, "GotenbergTimeoutSeconds must be positive.")
             .Validate(options => options.ImageLayout.IsValid(), "ImageLayout requires a model path, valid thresholds, resize mode and resource limits.")
+            .Validate(options => options.ImageRecognitionFilter.IsValid(),
+                "ImageRecognitionFilter requires positive MinShortSide, MinLongSide and MinPixels, with MinLongSide >= MinShortSide.")
             .Validate(options => options.ImageInput.MaxDimension is > 0 and <= 65536
                 && options.ImageInput.MaxPixels is > 0 and <= 100_000_000,
                 "ImageInput requires MaxDimension between 1 and 65536 and MaxPixels between 1 and 100000000.")

@@ -195,7 +195,7 @@ public sealed partial class HttpConversionTests
         var multipart = fileOperation.GetProperty("requestBody").GetProperty("content").GetProperty("multipart/form-data");
         var fileSchema = multipart.GetProperty("schema");
         Assert.Contains(fileSchema.GetProperty("required").EnumerateArray(), value => value.GetString() == "files");
-        Assert.False(fileSchema.GetProperty("additionalProperties").GetBoolean());
+        Assert.True(!fileSchema.TryGetProperty("additionalProperties", out var fileAdditional) || fileAdditional.GetBoolean());
         var properties = fileSchema.GetProperty("properties");
         Assert.Equal("array", properties.GetProperty("files").GetProperty("type").GetString());
         Assert.Equal("binary", properties.GetProperty("files").GetProperty("items").GetProperty("format").GetString());
@@ -215,7 +215,7 @@ public sealed partial class HttpConversionTests
         Assert.Contains(base64.GetProperty("required").EnumerateArray(), value => value.GetString() == "filename");
         Assert.Contains(base64.GetProperty("required").EnumerateArray(), value => value.GetString() == "base64_string");
         Assert.Equal("byte", base64.GetProperty("properties").GetProperty("base64_string").GetProperty("format").GetString());
-        Assert.False(sourceProperties.GetProperty("options").GetProperty("additionalProperties").GetBoolean());
+        Assert.True(!sourceProperties.GetProperty("options").TryGetProperty("additionalProperties", out var optionAdditional) || optionAdditional.GetBoolean());
 
         var responses = fileOperation.GetProperty("responses");
         var success = responses.GetProperty("200").GetProperty("content");
@@ -428,9 +428,8 @@ public sealed partial class HttpConversionTests
     [InlineData("{\"file_sources\":[{\"filename\":\"report.md\",\"base64_string\":\"YQ==\"}],\"options\":{\"to_formats\":[]}}")]
     [InlineData("{\"file_sources\":[{\"filename\":\"report.md\",\"base64_string\":\"YQ==\"}],\"options\":{\"to_formats\":null}}")]
     [InlineData("{\"file_sources\":[{\"filename\":\"report.md\",\"base64_string\":\"YQ==\"}],\"options\":{\"to_formats\":[\"text\"]}}")]
-    [InlineData("{\"file_sources\":[{\"filename\":\"report.md\",\"base64_string\":\"YQ==\"}],\"options\":{\"table_mode\":\"fast\"}}")]
     [InlineData("{\"file_sources\":[{\"filename\":\"report.md\",\"base64_string\":\"YQ==\"}],\"options\":{\"do_ocr\":\"false\"}}")]
-    public async Task RejectsMalformedOrUnsupportedSourceRequests(string json)
+    public async Task RejectsMalformedSourceRequests(string json)
     {
         await using var server = await TestServer.StartAsync();
         using var response = await server.Client.PostAsync("/v1/convert/source", new StringContent(json, Encoding.UTF8, "application/json"));
@@ -438,14 +437,10 @@ public sealed partial class HttpConversionTests
     }
 
     [Theory]
-    [InlineData("format", "json")]
-    [InlineData("recognizeImages", "false")]
     [InlineData("to_formats", "text")]
     [InlineData("to_formats", "markdown")]
     [InlineData("do_ocr", "yes")]
-    [InlineData("table_mode", "fast")]
-    [InlineData("callbacks", "https://example.com/callback")]
-    public async Task RejectsUnsupportedFileOptions(string name, string value)
+    public async Task RejectsInvalidSupportedFileOptions(string name, string value)
     {
         await using var server = await TestServer.StartAsync();
         using var form = Form("# Report", "report.md");

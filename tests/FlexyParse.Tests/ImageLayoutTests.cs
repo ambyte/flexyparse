@@ -378,6 +378,7 @@ public sealed class ImageLayoutTests
 
     private static FlexyParseOptions Settings() => new()
     {
+        ImageRecognitionFilter = new() { Enabled = false },
         ImageLayout = new() { Enabled = true, ModelPath = "missing-layout-model.onnx" },
         ModelApi = new() { MaxAttempts = 1, BaseUrl = "http://localhost/v1/", RequireApiKey = false }
     };

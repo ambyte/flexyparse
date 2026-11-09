@@ -16,7 +16,7 @@ public sealed class SourceDocumentService(IHttpClientFactory clients, IOptions<S
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Skip
     };
 
     public static IServiceCollection AddServices(IServiceCollection services)
@@ -76,6 +76,22 @@ public sealed class SourceDocumentService(IHttpClientFactory clients, IOptions<S
 
             batch.SourceRequestPath = bodyPath;
             var payload = await ReadPayloadAsync(batch, token).ConfigureAwait(false);
+            IgnoredConversionParameters.LogAndClear(request, payload.UnsupportedParameters);
+            IgnoredConversionParameters.LogAndClear(request, payload.Options?.UnsupportedParameters, "options.");
+            if (payload.HttpSources is not null)
+            {
+                for (var index = 0; index < payload.HttpSources.Length; index++)
+                {
+                    IgnoredConversionParameters.LogAndClear(request, payload.HttpSources[index]?.UnsupportedParameters, $"http_sources[{index}].");
+                }
+            }
+            if (payload.FileSources is not null)
+            {
+                for (var index = 0; index < payload.FileSources.Length; index++)
+                {
+                    IgnoredConversionParameters.LogAndClear(request, payload.FileSources[index]?.UnsupportedParameters, $"file_sources[{index}].");
+                }
+            }
             if (payload.Options is null || payload.HttpSources is null || payload.FileSources is null
                 || payload.HttpSources.Length + (long)payload.FileSources.Length is 0
                 || payload.HttpSources.Length + (long)payload.FileSources.Length > settings.MaxFilesPerRequest)
@@ -301,17 +317,26 @@ public sealed class SourceDocumentService(IHttpClientFactory clients, IOptions<S
         public HttpSource?[] HttpSources { get; init; } = [];
         public FileSource?[] FileSources { get; init; } = [];
         public ConversionOptions Options { get; init; } = new();
+
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement>? UnsupportedParameters { get; init; }
     }
 
     private sealed class HttpSource
     {
         public string? Url { get; init; }
+
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement>? UnsupportedParameters { get; init; }
     }
 
     private sealed class FileSource
     {
         public string? Filename { get; init; }
         public string? Base64String { get; init; }
+
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement>? UnsupportedParameters { get; init; }
     }
 }
 

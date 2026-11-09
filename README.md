@@ -16,6 +16,7 @@ Convert **PDF, Office documents and images to JSON, Markdown or HTML** using a w
 - Optionally enable local layout analysis for columns, table detection and image segmentation.
 - Process files, public URLs or Base64 sources; use background jobs for long conversions.
 - Download one document or a ZIP archive for a batch.
+- Export images as placeholders, embedded data URLs or referenced assets in a ZIP; skip tiny images before native recognition.
 
 ## Quick start
 
@@ -103,7 +104,15 @@ For Office/HTML support outside Docker, configure an accessible Gotenberg URL. S
 curl -f http://localhost:8080/v1/convert/file -F "files=@report.pdf" -F "to_formats=md" -F "do_ocr=false" -o result.json
 ```
 
-One document returns a JSON wrapper containing the requested content; multiple documents return ZIP. The JSON document model is FlexyParse's own schema, not DoclingDocument. See [API requests, responses and background jobs](docs/api.md).
+In native mode, one document returns a JSON wrapper containing the requested content; multiple documents return ZIP. Referenced image export also returns ZIP for a single document, including its image assets. The JSON document model is FlexyParse's own schema, not DoclingDocument. See [API requests, responses and background jobs](docs/api.md).
+
+### Docling compatibility and image export
+
+Native HTTP conversion supports **image_export_mode=placeholder|embedded|referenced** (default placeholder), **include_images**, output formats, OCR enablement and the local OCR profile. Export is independent of recognition: skipped tiny images can still be exported. Use **include_images=false** for text-only exports, including the historical output without image placeholders.
+
+Only parameters implemented by FlexyParse are applied. The service exposes a Docling-style API subset, not all Docling engines, model presets or enrichment options. Unsupported parameters are **ignored with warning logs containing their names only**, never their values. Invalid values of supported parameters still fail validation. Query **/v1/capabilities** for applied options and **/openapi.json** for their schema. No external Docling service is used.
+
+The native recognition filter defaults to short side **24 px**, long side **80 px**, and area **4096 pixels**, inclusive and independent of orientation. All three criteria must pass: a 32×32 icon is skipped, while a 400×24 text strip is eligible. Thresholds are adjustable; they are a conservative size heuristic, not semantic detection of logos or text. See [filter settings](docs/host.md#small-image-filter).
 
 ## Configuration and limitations
 

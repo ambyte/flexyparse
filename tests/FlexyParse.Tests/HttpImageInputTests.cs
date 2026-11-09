@@ -43,7 +43,7 @@ public sealed partial class HttpConversionTests
             services.AddHttpClient(GotenbergPdfConverter.HttpClientName)
                 .ConfigurePrimaryHttpMessageHandler(() => new RejectRasterConversionHandler());
         });
-        using var bitmap = new SKBitmap(12, 8, SKColorType.Bgra8888, SKAlphaType.Opaque);
+        using var bitmap = new SKBitmap(128, 64, SKColorType.Bgra8888, SKAlphaType.Opaque);
         bitmap.Erase(SKColors.White);
         using var encoded = bitmap.Encode(SKEncodedImageFormat.Png, 100);
         var bytes = encoded.ToArray();
@@ -72,7 +72,9 @@ public sealed partial class HttpConversionTests
             Assert.Equal("success", result.RootElement.GetProperty("status").GetString());
             var pages = result.RootElement.GetProperty("document").GetProperty("json_content").GetProperty("pages");
             var page = Assert.Single(pages.EnumerateArray());
-            Assert.Equal("Direct raster OCR", Assert.Single(page.GetProperty("blocks").EnumerateArray()).GetProperty("text").GetString());
+            var blocks = page.GetProperty("blocks").EnumerateArray().ToArray();
+            Assert.Equal("image", blocks[0].GetProperty("type").GetString());
+            Assert.Equal("Direct raster OCR", Assert.Single(blocks, block => block.GetProperty("type").GetString() == "paragraph").GetProperty("text").GetString());
             Assert.Equal(1, recognizer.Calls);
         }
     }

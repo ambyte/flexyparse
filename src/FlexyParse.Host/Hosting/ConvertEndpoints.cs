@@ -16,7 +16,7 @@ public static class ConvertEndpoints
             from_formats = new[] { "pdf", "md", "png", "jpg", "jpeg", "webp", "bmp", "gif", "ico" },
             to_formats = new[] { "md", "json", "html" },
             sources = new[] { "files", "http_sources", "file_sources" },
-            options = new[] { "to_formats", "do_ocr", "ocr_language" },
+            options = new[] { "to_formats", "do_ocr", "ocr_language", "image_export_mode", "include_images" },
             // Gotenberg accepts additional formats; FlexyParse does not maintain its format list.
             gotenberg_enabled = !string.IsNullOrWhiteSpace(settings.Value.GotenbergUrl),
             async_support = true,

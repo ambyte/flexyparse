@@ -111,9 +111,12 @@ internal sealed class ImageLayoutPlan(SKBitmap bitmap, IReadOnlyList<ImageLayout
 {
     internal IReadOnlyList<ImageLayoutRegion> Regions => regions;
 
+    internal SKRectI CropBounds(ImageLayoutRegion region) =>
+        ImageLayoutPlanner.CropBounds(region, regions, bitmap.Width, bitmap.Height, padding);
+
     internal byte[] Crop(ImageLayoutRegion region)
     {
-        var bounds = ImageLayoutPlanner.CropBounds(region, regions, bitmap.Width, bitmap.Height, padding);
+        var bounds = CropBounds(region);
         using var crop = new SKBitmap();
         if (!bitmap.ExtractSubset(crop, bounds))
         {

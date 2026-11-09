@@ -113,6 +113,7 @@ internal sealed class RecognitionLayoutFixture(string scenario = "split") : IIma
 {
     internal FlexyParseOptions Options { get; } = new()
     {
+        ImageRecognitionFilter = new() { Enabled = false },
         ImageLayout = new() { Enabled = scenario != "disabled" },
         ModelApi = new() { MaxImageBytes = scenario == "oversized" ? 1 : 20_000_000 }
     };

@@ -2,7 +2,7 @@
 
 Base URL: **<http://localhost:8080>**. Interactive documentation: **<http://localhost:8080/docs>**. Schema: **<http://localhost:8080/openapi.json>**.
 
-FlexyParse implements a supported subset of the Docling-style REST API, not full Docling Serve compatibility. Its JSON document model is not DoclingDocument.
+FlexyParse applies only the Docling-style conversion parameters it can execute itself. Its JSON model is not DoclingDocument. The supported contract is documented below and exposed through **/openapi.json** and **/v1/capabilities**. Unsupported options are ignored with warning logs containing names only; requests are not delegated to an external Docling service.
 
 ## Authentication and routes
 
@@ -34,10 +34,22 @@ curl -f http://localhost:8080/v1/convert/file -F "files=@report.pdf" -F "to_form
 | to_formats | md, json or html; repeat for multiple formats. | md |
 | do_ocr | true or false; controls image recognition. | true |
 | ocr_language | One RapidOCR model prefix. | Server profile, normally eslav |
+| image_export_mode | placeholder, embedded or referenced. | placeholder |
+| include_images | true or false; controls exported images, not recognition. | true |
 
 HTTP recognition defaults to enabled **regardless of the CLI/library default**. Explicitly disable it when no recognizer is configured. Markdown conversion does not invoke OCR. Raster images go directly to recognition, without Gotenberg; multi-frame images are rejected.
 
-Field names and output formats are case-sensitive. Unknown fields/options are rejected. Do not send a JSON array in a multipart output-format field.
+Field names and output formats are case-sensitive. Unknown fields/options are ignored and logged at Warning level without their values. This includes unsupported multipart fields, JSON request properties, conversion options and source properties. Supported fields still require valid values: for example, an unknown table_mode option is ignored, but an invalid image_export_mode or do_ocr value returns 400. Do not send a JSON array in a multipart output-format field.
+
+Ignored fields remain subject to request/section size limits and JSON syntax validation. Unknown multipart sections are drained without buffering their values. Logs use the **FlexyParse.Hosting.ConversionParameters** category and the structured **ParameterName** field. Names include the JSON location where applicable, such as **options.table_mode**; control characters are escaped and long names are truncated. Values, including nested model/API configurations, are never logged. Background requests log ignored parameters during admission, not again when the worker resolves sources.
+
+Native image export is independent of do_ocr: **placeholder** emits image blocks without sources and Markdown/HTML image comments; **embedded** includes data URLs; **referenced** returns a ZIP with ordinary output files and an **images/** directory, even for one document. Links resolve relative to those output files after extracting the archive. **include_images=false** suppresses image export, including placeholders, but does not suppress recognized text. These same options are accepted inside the source request's **options** object and in asynchronous requests. Tiny images skipped by recognition can still be exported.
+
+```sh
+curl -f http://localhost:8080/v1/convert/file -F "files=@report.pdf" -F "to_formats=md" -F "do_ocr=false" -F "image_export_mode=referenced" -o result.zip
+```
+
+Recognition applies a configurable size filter by default: short side ≥24 px, long side ≥80 px and area ≥4096 pixels, including padded layout crops. Skips do not become errors. This is a heuristic rather than logo/text classification; see [filter settings](host.md#small-image-filter).
 
 RapidOCR model prefixes: **arabic, ch, ch_server, cyrillic, devanagari, el, en, eslav, korean, latin, ta, te, th**. Prefixes are trimmed and case-insensitive; aliases such as ru and regional tags are invalid. The override selects a RapidOCR profile only, not the recognition provider. See [recognition settings](host.md#recognition).
 
@@ -77,7 +89,7 @@ URL and Base64 sources can be combined within the batch limit. Only public HTTP(
 
 ## Responses
 
-**One document** returns JSON containing the requested outputs:
+**One document**, except when exporting referenced images, returns JSON containing the requested outputs:
 
 ```json
 {
@@ -92,6 +104,8 @@ URL and Base64 sources can be combined within the batch limit. Only public HTTP(
 Depending on requested formats, the document includes **md_content**, **json_content** and/or **html_content**. JSON content is an object, not an encoded JSON string. The same wrapper is returned even when only Markdown or HTML is requested.
 
 **Multiple documents** return a ZIP archive containing the requested output files. A conversion failure fails the batch; do not expect a partial-success archive.
+
+Referenced image export with image inclusion enabled returns ZIP regardless of document count. The archive includes image assets and all requested output files; no response exposes links into a disposable server workspace.
 
 ## Background jobs
 

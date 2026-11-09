@@ -18,7 +18,7 @@ Core defines the [recognition contract](../src/FlexyParse.Core/Recognition/IImag
 1. Stage the input in a bounded per-job workspace and acquire the shared document-processing gate.
 2. Process Markdown directly; detect PDF and raster content from bytes. Other supported documents go through Gotenberg when configured.
 3. Extract native PDF text/tables and embedded images, or create a single page for a raster image. Normalize orientation/transparency where needed; reject multi-frame images.
-4. Optionally analyze layout and recognize image regions with the selected provider. Repeated PDF images share recognition results by content hash.
+4. Filter tiny images before provider selection/key enforcement, then optionally analyze layout and recognize eligible image regions with the selected provider. Repeated PDF images share recognition results by content hash.
 5. Write JSON, Markdown or HTML and clean up temporary job files.
 
 Native PDF text is reflowed and ordered by columns. Optional YOLO layout analysis guides table candidates and image segmentation; without it, native tables use ruled/lattice extraction. Image-layout plans validate bounds, ordering and coverage. Unsafe plans use whole-image recognition or a full-coverage whitespace split. Layout and OCR are heuristics, not exact document reconstruction.
@@ -82,6 +82,16 @@ Core binds the **FlexyParse** configuration section through standard .NET config
 Recognition defaults to enabled. Disable it per conversion when no recognizer is configured. Configure a reachable Gotenberg URL for Office/HTML input; PDF, Markdown and supported images do not require it.
 
 JSON is the FlexyParse document schema, **not DoclingDocument**. It includes source filename, metadata and pages with typed paragraph, heading, table, image and error blocks. See [content models](../src/FlexyParse.Core/Model/ContentModels.cs). Library output is the requested document itself; Host adds its HTTP JSON wrapper or ZIP separately.
+
+### Recognition eligibility and image export
+
+The provider-independent [image filter](../src/FlexyParse.Core/Recognition/ImageRecognitionFilter.cs) uses [validated filter options](../src/FlexyParse.Core/Options/ImageRecognitionFilterOptions.cs). By default, the short side must be at least 24 px, the long side at least 80 px, and the area at least 4096 pixels. All comparisons are inclusive and orientation-independent; area uses wide arithmetic. Examples: 32×32 and 64×64 are skipped; 128×64 and 400×24 are eligible. Narrow text strips are not rejected merely because of aspect ratio. Unknown manifest dimensions retain existing provider validation.
+
+Core passes a filtered index to recognition but keeps the original index and page artifacts for writers. Filtering applies to direct raster inputs, extracted PDF images and padded layout crops; skipped items do not create error blocks or invoke provider callbacks. When no image is eligible, no recognition API key is required. The filter is heuristic: lower thresholds or disable it for genuinely useful tiny text. Configure **FlexyParse:ImageRecognitionFilter:Enabled**, **MinShortSide**, **MinLongSide**, and **MinPixels** through standard configuration. Positive thresholds and a long-side minimum at least as large as the short-side minimum are validated on startup.
+
+The [conversion input](../src/FlexyParse.Core/Pipeline/ConversionInput.cs) exposes optional image export mode, image inclusion and a caller-owned image output directory. Unspecified export mode retains historical Core/CLI text-only output. Explicit placeholder mode emits an image block without a source and a Markdown/HTML image comment; embedded mode uses data URLs; referenced mode copies normalized/extracted assets into the caller-owned directory and uses relative references based on its basename. Referenced mode requires that directory. Retain/distribute the assets alongside the document; Core does not package them. Host packages them in ZIP results, even for one document. Image blocks use **type=image**, **alt**, and optional **src**. Exported images precede any recognized blocks at the same image location. Disabling image inclusion does not disable OCR.
+
+Host applies only conversion parameters implemented by FlexyParse: output formats, recognition enablement, the local OCR profile, image export mode and image inclusion. Unsupported Docling-specific engines, presets and enrichment options are ignored at the HTTP boundary and logged by name only, without values or external delegation. Supported options retain validation. The same policy covers multipart and JSON, including background admission; unknown option values are cleared from the in-memory options before queuing. Core's filtering and output behavior apply to both synchronous and background HTTP conversions.
 
 ## Errors and resource ownership
 
